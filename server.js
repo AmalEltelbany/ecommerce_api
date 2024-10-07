@@ -1,29 +1,54 @@
 const express = require('express');
-const dotenv=require('dotenv')
-const morgan=require('morgan')
-const mongoose=require('mongoose')
-dotenv.config({path:'config.env'});
+const dotenv = require('dotenv');
+const morgan = require('morgan');
 
-//connect db
-mongoose.connect(process.env.DB_URI).then((conn)=>{
-    console.log(`Database connected:${conn.connection.host}`)
-}).catch((err)=>{
-    console.error(`Database error:${err}`);
-    process.exit(1)
-})
+dotenv.config({ path: 'config.env' });
+const ApiError = require('./utils/apiError');
+const globalError = require('./middlewares/errorMiddleware');
+const dbConnection = require('./config/database');
+// Routes
+const categoryRoute = require('./routes/categoryRoute');
+const subCategoryRoute = require('./routes/subCategoryRoute');
+const brandRoute = require('./routes/brandRoute');
+const productRoute = require('./routes/productRoute');
 
+// Connect with db
+dbConnection();
 
-
+// express app
 const app = express();
-if(process.env.NODE_ENV==='development'){
-app.use(morgan('dev'));
-console.log(`mode:${process.env.NODE_ENV}`)
+
+// Middlewares
+app.use(express.json());
+
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+  console.log(`mode: ${process.env.NODE_ENV}`);
 }
 
-app.get('/', (req, res) => {
-    res.send('our api v1');
-})
-const PORT=process.env.PORT||8000;
-app.listen(PORT, () => {
-    console.log(`app running on port ${PORT}`);
-})
+// Mount Routes
+app.use('/api/v1/categories', categoryRoute);
+app.use('/api/v1/subcategories', subCategoryRoute);
+app.use('/api/v1/brands', brandRoute);
+app.use('/api/v1/products', productRoute);
+
+app.all('*', (req, res, next) => {
+  next(new ApiError(`Can't find this route: ${req.originalUrl}`, 400));
+});
+
+// Global error handling middleware for express
+app.use(globalError);
+
+const PORT = process.env.PORT || 8000;
+const server = app.listen(PORT, () => {
+  console.log(`App running running on port ${PORT}`);
+});
+
+// Handle rejection outside express
+process.on('unhandledRejection', (err) => {
+  console.error(`UnhandledRejection Errors: ${err.name} | ${err.message}`);
+  server.close(() => {
+    console.error(`Shutting down....`);
+    process.exit(1);
+  });
+});
