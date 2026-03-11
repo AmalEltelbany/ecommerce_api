@@ -7,7 +7,7 @@ class ApiFeatures {
   filter() {
     // eslint-disable-next-line node/no-unsupported-features/es-syntax
     const queryStringObj = { ...this.queryString };
-    const excludesFields = ['page', 'sort', 'limit', 'fields'];
+    const excludesFields = ['page', 'sort', 'limit', 'fields', 'keyword'];
     excludesFields.forEach((field) => delete queryStringObj[field]);
     // Apply filtration using [gte, gt, lte, lt]
     let queryStr = JSON.stringify(queryStringObj);
@@ -23,7 +23,7 @@ class ApiFeatures {
       const sortBy = this.queryString.sort.split(',').join(' ');
       this.mongooseQuery = this.mongooseQuery.sort(sortBy);
     } else {
-      this.mongooseQuery = this.mongooseQuery.sort('-createAt');
+      this.mongooseQuery = this.mongooseQuery.sort('-createdAt');
     }
     return this;
   }
