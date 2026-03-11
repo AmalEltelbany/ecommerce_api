@@ -71,7 +71,28 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Mongoose query middleware
+// ─── Database Indexes ─────────────────────────────────────────────────────────
+// Explicit indexes on hot query fields improve read performance significantly.
+
+productSchema.index({ price: 1 });                          // price range filter
+productSchema.index({ ratingsAverage: -1 });                // sort by top-rated
+productSchema.index({ sold: -1 });                          // bestsellers sort
+productSchema.index({ createdAt: -1 });                     // newest products
+productSchema.index({ category: 1 });                       // filter by category
+productSchema.index({ brand: 1 });                          // filter by brand
+
+// Compound index: satisfies category equality + price range scan in one traversal.
+// More efficient than two separate single-field indexes.
+productSchema.index({ category: 1, price: 1 });
+
+// Full-text search index: enables $text queries on title and description
+productSchema.index({ title: 'text', description: 'text' });
+
+// Sparse index: only indexes documents where priceAfterDiscount exists.
+// Keeps the index small — only discounted products are indexed.
+productSchema.index({ priceAfterDiscount: 1 }, { sparse: true });
+
+// ─── Query Middleware ─────────────────────────────────────────────────────────
 productSchema.pre(/^find/, function (next) {
   this.populate({
     path: 'category',
