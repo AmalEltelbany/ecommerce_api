@@ -1,14 +1,10 @@
 const express = require('express');
-// eslint-disable-next-line import/no-extraneous-dependencies
-const multer = require('multer');
-
 const {
   getCategoryValidator,
   createCategoryValidator,
   updateCategoryValidator,
   deleteCategoryValidator,
 } = require('../utils/validators/categoryValidator');
-
 const {
   getCategories,
   getCategory,
@@ -16,25 +12,40 @@ const {
   updateCategory,
   deleteCategory,
 } = require('../services/categoryService');
-
-const upload = multer({ dest: 'uploads/categories' });
+const { protect, restrictTo } = require('../middlewares/authMiddleware');
+const { uploadSingleImage, resizeImage } = require('../middlewares/uploadMiddleware');
+const { cacheMiddleware, invalidateCache } = require('../middlewares/cacheMiddleware');
 const subcategoriesRoute = require('./subCategoryRoute');
 
 const router = express.Router();
 
+// Nested route: /categories/:categoryId/subcategories
 router.use('/:categoryId/subcategories', subcategoriesRoute);
 
 router
   .route('/')
-  .get(getCategories)
-  .post(upload.single('image') ,(req,res,next)=>{
-    console.log(req.file);
-    next();
-  },createCategoryValidator, createCategory);
+  .get(cacheMiddleware('categories', 600), getCategories)
+  .post(
+    protect,
+    restrictTo('admin', 'manager'),
+    invalidateCache('categories'),
+    uploadSingleImage('image'),
+    resizeImage('categories', 600, 600),
+    createCategoryValidator,
+    createCategory
+  );
+
 router
   .route('/:id')
   .get(getCategoryValidator, getCategory)
-  .put(updateCategoryValidator, updateCategory)
-  .delete(deleteCategoryValidator, deleteCategory);
+  .put(
+    protect,
+    restrictTo('admin', 'manager'),
+    uploadSingleImage('image'),
+    resizeImage('categories', 600, 600),
+    updateCategoryValidator,
+    updateCategory
+  )
+  .delete(protect, restrictTo('admin'), deleteCategoryValidator, deleteCategory);
 
 module.exports = router;
