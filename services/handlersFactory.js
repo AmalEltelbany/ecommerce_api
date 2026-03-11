@@ -17,6 +17,7 @@ exports.updateOne = (Model) =>
   asyncHandler(async (req, res, next) => {
     const document = await Model.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
+      runValidators: true, // enforce schema min/max/enum on updates
     });
 
     if (!document) {
